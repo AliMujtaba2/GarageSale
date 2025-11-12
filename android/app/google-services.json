@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "370111385075",
+    "project_id": "garagesale-318e2",
+    "storage_bucket": "garagesale-318e2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:370111385075:android:4b50632df4e3537638d686",
+        "android_client_info": {
+          "package_name": "com.myapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCqqlwJT6jm8lfsntnLqxLA2Gqsts9LzOU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

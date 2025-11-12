@@ -12,9 +12,31 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath("com.android.tools.build:gradle")
+        // ✅ Include correct versions
+        classpath("com.android.tools.build:gradle:8.6.0")
         classpath("com.facebook.react:react-native-gradle-plugin")
-        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin")
+        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion")
+
+        // ✅ Add Firebase Gradle plugin
+        classpath("com.google.gms:google-services:4.4.3")
+    }
+}
+
+// ✅ Mapbox configuration must be outside buildscript
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+        maven {
+            url 'https://api.mapbox.com/downloads/v2/releases/maven'
+            authentication {
+                basic(BasicAuthentication)
+            }
+            credentials {
+                username = 'mapbox'
+                password = project.properties['MAPBOX_DOWNLOADS_TOKEN'] ?: ""
+            }
+        }
     }
 }
 
