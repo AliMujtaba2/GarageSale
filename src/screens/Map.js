@@ -58,7 +58,7 @@ const MapScreen = ({ navigation }) => {
     return () => unsubscribe();
   }, []);
 
-  MapboxGL.setAccessToken('pk.eyJ1IjoibXVqdGFiYTI3MyIsImEiOiJjbWZ0cDB6djUwNHQyMmxzanZ5bzF2Mmp4In0.nvRYhPQI1cJAl_gXnAYEJg');
+ // MapBox.setToken() here
 
   // // State for calendar and time and My Garage
   const [selectedDate, setSelectedDate] = useState(null);
