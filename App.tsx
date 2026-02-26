@@ -11,35 +11,21 @@ import {
   SafeAreaProvider,
   useSafeAreaInsets,
 } from 'react-native-safe-area-context';
+import MyApp from './src/navigation/Main';
+import messaging from '@react-native-firebase/messaging';
 
 function App() {
-  const isDarkMode = useColorScheme() === 'dark';
+  // Register background handler for notifications (when app is closed)
+messaging().setBackgroundMessageHandler(async remoteMessage => {
+  console.log('📬 Background notification received:', remoteMessage);
+});
+
 
   return (
     <SafeAreaProvider>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-      <AppContent />
+     <MyApp />
     </SafeAreaProvider>
   );
 }
-
-function AppContent() {
-  const safeAreaInsets = useSafeAreaInsets();
-
-  return (
-    <View style={styles.container}>
-      <NewAppScreen
-        templateFileName="App.tsx"
-        safeAreaInsets={safeAreaInsets}
-      />
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-});
 
 export default App;
