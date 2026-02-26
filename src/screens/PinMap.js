@@ -6,7 +6,7 @@ import { LocationContext } from "../context/contextapi/LiveLocationAPI";
 import {useSelector } from "react-redux";
 import { darkTheme, lightTheme } from "../constants/colors";
 
-MapboxGL.setAccessToken("pk.eyJ1IjoibXVqdGFiYTI3MyIsImEiOiJjbWZ0cDB6djUwNHQyMmxzanZ5bzF2Mmp4In0.nvRYhPQI1cJAl_gXnAYEJg");
+// Mapbox.setAccessToken() here
 
 export default function MapPickerScreen({ navigation, route }) {
   const [centerCoords, setCenterCoords] = useState(null);
