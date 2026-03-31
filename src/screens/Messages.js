@@ -15,7 +15,9 @@ import SendMessegeSVG from '../svg/send';
 import BackSVG from '../svg/back';
 import { auth, db } from '../../firebase';
 import { collection, addDoc, setDoc, doc, serverTimestamp, increment, query, orderBy, onSnapshot, where, getDocs, writeBatch, updateDoc } from 'firebase/firestore';
-
+import VoiceCallSVG from '../svg/voiceeCall';
+import VideoCallSVG from '../svg/videoCall';
+import { createMeeting, sendCallNotification, sendMessage } from '../config/apiservices';
 
 const Messages = ({ route }) => {
   const navigation = useNavigation();
@@ -92,67 +94,79 @@ const Messages = ({ route }) => {
     markMessagesAsRead();
   }, [currentUser, recipientId]);
 
+
+
   const handleSend = async () => {
-    if (inputText.trim().length === 0) return;
+    const text = inputText.trim();
+
+    if (!text) return;
+
     if (!currentUser || !recipientId) {
-      alert('Cannot send message: Missing user information');
+      alert("Missing user info");
       return;
     }
 
+    const conversationId = [currentUser.uid, recipientId].sort().join("_");
+
+    // Optimistic UI (optional but recommended)
+    setInputText("");
+
     try {
-      const conversationId = [currentUser.uid, recipientId].sort().join('_');
-
-      // 1. Add message to subcollection
-      await addDoc(collection(db, "conversations", conversationId, "messages"), {
-        text: inputText.trim(),
-        senderId: currentUser.uid,
-        recipientId: recipientId,
-        timestamp: serverTimestamp(),
-        read: false
-      });
-
-      // 2. Update conversation metadata
-      await setDoc(doc(db, "conversations", conversationId), {
-        participants: [currentUser.uid, recipientId],
-        lastMessage: inputText.trim(),
-        lastMessageTime: serverTimestamp(),
-        participantEmails: {
-          [currentUser.uid]: currentUser.email,
-          [recipientId]: recipientEmail
-        },
-        unreadCount: {
-          [recipientId]: increment(1)
+      // 1. Add message
+      await addDoc(
+        collection(db, "conversations", conversationId, "messages"),
+        {
+          text,
+          senderId: currentUser.uid,
+          recipientId,
+          timestamp: serverTimestamp(),
+          read: false,
         }
-      }, { merge: true });
+      );
 
-       // Send notification to backend
-      try {
-        await fetch(`https://garage-sale-notification-service.vercel.app/send-notification`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            recipientId: recipientId,
-            senderId: currentUser.uid,
-            senderEmail: currentUser.email,
-            text: inputText.trim(),
-            conversationId: conversationId
-          })
-        });
-        console.log('✅ Notification sent');
-      } catch (err) {
-        console.log('⚠️ Notification error:', err);
-      }
+      // 2. Update conversation
+      await setDoc(
+        doc(db, "conversations", conversationId),
+        {
+          participants: [currentUser.uid, recipientId],
+          lastMessage: text,
+          lastMessageTime: serverTimestamp(),
 
-      // 3. Clear input and scroll to bottom
-      setInputText('');
+          participantEmails: {
+            [currentUser.uid]: currentUser.email || "",
+            [recipientId]: recipientEmail || "",
+          },
+
+          // safer structure
+          [`unreadCount.${recipientId}`]: increment(1),
+        },
+        { merge: true }
+      );
+
+      // 3. Send notification (reuse function)
+      sendMessage({
+        recipientId,
+        senderId: currentUser.uid,
+        senderEmail: currentUser.email,
+        text,
+        conversationId,
+      }).catch((err) =>
+        console.log("⚠️ Notification error:", err)
+      );
+
+      // 4. Scroll
       setTimeout(() => {
         flatListRef.current?.scrollToEnd({ animated: true });
       }, 100);
 
-      console.log('✅ Message sent successfully');
+      console.log("✅ Message sent");
     } catch (error) {
-      console.error('❌ Error sending message:', error);
-      alert('Failed to send message: ' + error.message);
+      console.error("❌ Send error:", error);
+
+      // restore text if failed
+      setInputText(text);
+
+      alert("Failed to send message");
     }
   };
 
@@ -162,6 +176,36 @@ const Messages = ({ route }) => {
     const hours = date.getHours();
     const minutes = date.getMinutes();
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+  };
+
+  const startCall = async (type = 'voice') => {
+    if (!recipientId) return;
+
+    try {
+      const meetingId = await createMeeting();
+     
+      if (meetingId) {
+        await sendCallNotification({
+          recipientId,
+          senderId: currentUser.uid,
+          senderEmail: currentUser.email,
+          meetingId,
+          callType: type,
+        });
+
+        console.log('✅ Call notification sent, navigating to CallScreen');
+        navigation.navigate('CallScreen', {
+          meetingId,
+          callType: type,
+          recipientEmail,
+        });
+      } else {
+        alert('Could not start call: Failed to create meeting room. Check console.');
+      }
+    } catch (error) {
+      console.error('❌ Error starting call:', error);
+      alert('Failed to start call: ' + error.message);
+    }
   };
 
   const renderMessage = ({ item }) => {
@@ -207,7 +251,10 @@ const Messages = ({ route }) => {
       <View style={[styles.header, { backgroundColor: colors.primary }]}>
         <TouchableOpacity onPress={() => navigation.goBack()}><BackSVG color={'#fff'} /></TouchableOpacity>
         <Text style={styles.emailText}>{recipientEmail}</Text>
-      </View>
+        <View style={{ flexDirection: 'row', gap: 10, marginLeft: 80 }}>
+          <TouchableOpacity onPress={() => startCall('voice')}><VoiceCallSVG /></TouchableOpacity>
+          <TouchableOpacity onPress={() => startCall('video')}><VideoCallSVG /></TouchableOpacity>
+        </View></View>
 
       {/* Chat Box */}
       <FlatList

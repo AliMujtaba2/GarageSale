@@ -9,7 +9,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import messaging from '@react-native-firebase/messaging';
 import { Notifier } from 'react-native-notifier';
 // Animated transitions
-import {defaultScreenOptions  , slideFromRight , slideFromLeft} from "../Animations/screenAnimations";
+import {defaultScreenOptions  , slideFromRight , slideFromLeft} from "../animations/screenAnimations";
 
 
 import MapScreen from "../screens/Map";
@@ -21,6 +21,9 @@ import MapPickerScreen from "../screens/PinMap";
 import MessagesScreen from "../screens/Messages";
 import RecievedMessege from "../screens/RecievedMessege";
 import SplashScreen from "../screens/splash";
+import { CallScreen } from "../screens/CallScreen";
+import IncomingCallScreen from "../screens/IncomingCall";
+import { navigationRef } from "./RootNavigationRef";
 
 import { ActivityIndicator, MD3LightTheme, MD3DarkTheme, PaperProvider } from 'react-native-paper';
 import { NotifierWrapper } from 'react-native-notifier';
@@ -54,6 +57,19 @@ const darkTheme = {
   },
 };
 
+// 🔗 Deep Linking Configuration
+const linking = {
+  prefixes: ['garagesale://', 'https://garagesale.com'],
+  config: {
+    screens: {
+      IncomingCall: 'call/:meetingId/:callType/:senderId/:callerName',
+      Map: 'home',
+      Messege: 'messages/:recipientId',
+      CallScreen: 'incall/:meetingId',
+    },
+  },
+};
+
 const AppContent = () => {
   const [initializing, setInitializing] = useState(true);
   const [user, setUser] = useState(null);
@@ -78,12 +94,27 @@ const AppContent = () => {
 
     const unsubscribe = messaging().onMessage(async remoteMessage => {
       console.log('📬 Foreground notification:', remoteMessage);
+      console.log('📬 Notification data:', remoteMessage.data);
       
-      Notifier.showNotification({
-        title: remoteMessage.notification?.title || 'New Message',
-        description: remoteMessage.notification?.body,
-        duration: 5000,
-      });
+      // 🎤 Check if it's an incoming call notification
+      if (remoteMessage.data?.type === 'incoming_call') {
+        console.log('📞 Incoming call detected, navigating to IncomingCall screen');
+        console.log('📧 Sender Email:', remoteMessage.data.senderEmail || remoteMessage.data.senderId);
+        navigationRef.current?.navigate('IncomingCall', {
+          meetingId: remoteMessage.data.meetingId,
+          senderId: remoteMessage.data.senderId,
+          senderEmail: remoteMessage.data.senderEmail || remoteMessage.data.senderId,
+          callType: remoteMessage.data.callType,
+          callerName: remoteMessage.data.callerName,
+        });
+      } else {
+        // 💬 Regular message notification
+        Notifier.showNotification({
+          title: remoteMessage.notification?.title || 'New Message',
+          description: remoteMessage.notification?.body,
+          duration: 5000,
+        });
+      }
     });
 
     return unsubscribe;
@@ -100,7 +131,7 @@ const AppContent = () => {
     <PaperProvider theme={theme}>
         <NotifierWrapper>
           <LocationProvider>
-            <NavigationContainer>
+                <NavigationContainer ref={navigationRef} linking={linking} fallback={<SplashScreen />}>
               <Stack.Navigator
                 initialRouteName={user ? "Map" : "Login"}
                 screenOptions={{ headerShown: false }}
@@ -112,6 +143,8 @@ const AppContent = () => {
                 <Stack.Screen name="MapPicker" component={MapPickerScreen} />
                 <Stack.Screen name="Messege" component={MessagesScreen} options={slideFromRight} />
                 <Stack.Screen name="ReceivedMessege" component={RecievedMessege} options={slideFromRight} />
+                <Stack.Screen name="CallScreen" component={CallScreen} options={slideFromRight} />
+                <Stack.Screen name="IncomingCall" component={IncomingCallScreen} options={{ animationEnabled: true }} />
 
                 {/* Auth routes */}
                 <Stack.Screen name="Signup" component={SignupScreen} />
